@@ -1,0 +1,47 @@
+modLoader = "javafml"
+loaderVersion = "[47,48)"
+license = "All Rights Reserved"
+
+[[mods]]
+modId = "tacz_attribute_data"
+version = "1.0.2"
+displayName = "TaczAttribute Data Editor"
+authors = "Mc_BaiLu"
+logoFile = "logo.png"
+description = '''Visual item attribute editor and runtime bridge for TACZ and vanilla items.'''
+
+[[mixins]]
+config = "tacz_attribute_data.mixins.json"
+
+[[mixins]]
+config = "tacz_attribute_data.lrtactical.mixins.json"
+
+[[dependencies."tacz_attribute_data"]]
+modId = "forge"
+mandatory = true
+versionRange = "[47,48)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."tacz_attribute_data"]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.1,1.20.2)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."tacz_attribute_data"]]
+modId = "tacz"
+mandatory = true
+versionRange = "[1.1.6,)"
+ordering = "AFTER"
+side = "BOTH"
+
+# Optional: extra weapon support for LesRaisins Tactical Equipments. When present, its
+# melee weapons get editable attack speed/damage; when absent the compat mixin is skipped.
+[[dependencies."tacz_attribute_data"]]
+modId = "lrtactical"
+mandatory = false
+versionRange = "[0.1.0,)"
+ordering = "AFTER"
+side = "BOTH"

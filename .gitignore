@@ -1,0 +1,39 @@
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# idea
+out
+*.ipr
+*.iws
+*.iml
+.idea
+
+# gradle
+build
+.gradle
+
+# other
+eclipse
+run
+run-data
+mcmodsrepo
+
+# local development scratch (logs, decompiled jars, mappings)
+.tools/
+_decompiled/
+_extract/
+
+# third-party compileOnly jars (not redistributed - see README "从源码构建")
+libs/
+
+# build artifacts (the Gradle wrapper jar is required and kept)
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Files from Forge MDK
+forge*changelog.txt

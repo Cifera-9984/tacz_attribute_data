@@ -1,0 +1,20 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.core.attribute.tacz.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "tacz_attribute_data.refmap.json",
+  "mixins": [
+    "AbstractGunItemMixin",
+    "AmmoItemDataAccessorMixin",
+    "EntityKineticBulletMixin",
+    "GunTooltipMixin",
+    "ItemStackMixin"
+  ],
+  "client": [
+    "client.CameraSetupEventMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

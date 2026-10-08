@@ -1,0 +1,15 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.core.attribute.tacz.mixin.lr",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "tacz_attribute_data.refmap.json",
+  "mixins": [
+    "LrMeleeItemMixin",
+    "LrMeleeItemLegacyMixin"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

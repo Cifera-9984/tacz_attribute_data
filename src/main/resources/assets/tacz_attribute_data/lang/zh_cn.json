@@ -1,0 +1,6 @@
+{
+  "key.categories.tacz_attribute_data": "TaczAttribute Data Editor",
+  "key.tacz_attribute_data.open_editor": "打开属性编辑器",
+  "gui.tacz_attribute_data.editor": "属性编辑器",
+  "message.tacz_attribute_data.no_permission": "你没有权限编辑物品属性。"
+}
