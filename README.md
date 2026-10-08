@@ -29,6 +29,7 @@
   - [枪械数据卡片](#2-枪械数据卡片仅-tacz-枪械)
   - [附魔 / 描述 / 显示设置](#3-附魔--描述--显示设置)
   - [实时信息预览](#4-实时信息预览)
+- [兼容 LR 战术工坊（可选）](#兼容-lr-战术工坊可选)
 - [支持的属性一览](#支持的属性一览)
 - [权限模型](#权限模型)
 - [从源码构建](#从源码构建)
@@ -110,7 +111,7 @@
 3. 把 `tacz_attribute_data-1.0.2.jar` 放进 `mods` 文件夹；
 4. 启动游戏。
 
-> 可选：同时安装 **LesRaisins Tactical Equipments (lrtactical)**，其近战武器也会获得可编辑的攻击速度/伤害支持。
+> 可选：同时安装 **LR 战术工坊 / LesRaisins Tactical Equipments（`lrtactical`）**，其近战武器的攻击速度也会纳入编辑范围，详见 [兼容 LR 战术工坊](#兼容-lr-战术工坊可选)。
 
 ### 使用
 
@@ -162,6 +163,47 @@
 
 ---
 
+## 兼容 LR 战术工坊（可选）
+
+本模组内置对 **LR 战术工坊 / LesRaisins Tactical Equipments（`lrtactical`）** 近战武器的支持。**未安装 LR 时该部分整体跳过，不影响任何其它功能。**
+
+### 它解决了什么
+
+LR 的近战武器**不走原版的攻击速度属性** —— 挥砍节奏由武器索引里自带的计时数值决定（LR 从不引用 `Attributes.ATTACK_SPEED`）。所以不额外适配的话，在编辑器里给 LR 近战武器添加「攻击速度」是不会生效的。
+
+本模组在 LR 的两个计时消费点 —— `MeleeItem#getAttackCoolDown` 与 `MeleeItem#getAttackDelay`（LR 在 `CombatProperties#preAttack` 中同时使用二者）—— 对返回值做重缩放，让「攻击速度」对 LR 近战武器同样有效。
+
+### 数值语义：倍率
+
+「攻击速度」在这里表现为**速度倍率**，而不是绝对值：
+
+| 填入值 | 效果 |
+| --- | --- |
+| `1.0` | 保持武器原本手感 |
+| `2.0` | 冷却减半（挥得更快） |
+| `0.5` | 冷却翻倍（挥得更慢） |
+
+这样每把武器都保留自己的基础节奏 —— 同一个数值在快刀与重锤上会得到不同但合理的结果。
+
+### 版本兼容
+
+LR 在 **0.4.x** 给这两个方法加了一个末尾 `int` 参数，签名与 0.3.x 不同。由于 Mixin 要求注入签名与目标**完全一致**，本模组内置了两套签名：
+
+| Mixin | 适用版本 |
+| --- | --- |
+| `LrMeleeItemMixin` | LR 0.4.x（方法带额外 `int` 参数） |
+| `LrMeleeItemLegacyMixin` | LR 0.3.x（方法无该参数） |
+
+两者都放在独立配置 `tacz_attribute_data.lrtactical.mixins.json` 中，并声明 `required: false`。与当前 LR 版本不匹配的那一个只会产生**一条无害的启动警告**，游戏照常运行 —— 因此 0.4.x 客户端连 0.3.x 服务端也不会出问题。
+
+> 若某把武器自带攻击速度行、但其自身计时值为 0（无从缩放），模组会在日志输出一条 INFO 说明原因，而不是静默失效。
+
+### 生效范围
+
+编辑器对所有物品都可用；对于 LR 近战武器，「攻击速度」由上述重缩放接管，而「攻击伤害 / PVE 伤害 / 护甲穿透 / 耐久值 / 无法破坏 / 附魔光效」以及附魔、描述、显示设置等则沿用通用实现。
+
+---
+
 ## 支持的属性一览
 
 | 属性 | 说明 | 运行时行为 |
@@ -171,7 +213,7 @@
 | 爆头伤害 | 爆头伤害倍率（%） | 写入枪械射击事件 |
 | 护甲穿透 | 无视护甲比例（%） | 注入子弹，并在伤害结算阶段按比例混合 |
 | 护甲值 / 护甲韧性 / 生命 / 击退抗性 | 装备类属性 | 通过 `ItemAttributeModifierEvent` 注入到对应槽位 |
-| 攻击速度 | 近战冷却倍率 | 作用于原版攻击速度与 LR 近战冷却 |
+| 攻击速度 | 近战冷却倍率 | 作用于原版攻击速度与 [LR 战术工坊近战冷却](#兼容-lr-战术工坊可选) |
 | 原版攻击伤害 | 以「总值」形式覆盖原版攻击力 | `ItemAttributeModifierEvent` |
 | 耐久值 | 设置物品最大耐久 | 写入物品 |
 | 枪械等级 | TACZ 枪械等级（支持 `S`） | 写入 TACZ 物品数据 |
@@ -254,7 +296,17 @@ src/main/java/com/core/attribute/tacz/
 ├─ event/
 │  ├─ AttributeRuntimeEvents.java    # 属性真正生效的战斗/属性事件
 │  └─ TooltipEvents.java             # 提示框组装与面板裁剪
-├─ mixin/                            # 见下方「工作原理」
+├─ mixin/                            # 注入点，见下方「工作原理」
+│  ├─ ItemStackMixin.java             # 附魔光效
+│  ├─ AbstractGunItemMixin.java       # 隐藏枪械提示面板
+│  ├─ GunTooltipMixin.java            # 枪械面板显示替换后的主弹药
+│  ├─ AmmoItemDataAccessorMixin.java  # 让枪械接受新弹药
+│  ├─ EntityKineticBulletMixin.java   # 注入子弹伤害/穿甲/弹道
+│  ├─ client/CameraSetupEventMixin.java   # 客户端相机后座倍率
+│  └─ lr/                             # LR 战术工坊兼容（可选，双签名）
+│     ├─ LrMeleeItemMixin.java        # LR 0.4.x
+│     └─ LrMeleeItemLegacyMixin.java  # LR 0.3.x
+├─ compat/LrTiming.java              # LR 冷却重缩放（须置于 mixin 包外，见工作原理）
 ├─ network/                          # C2S/S2C 包与通道
 └─ tooltip/AttributeTooltip.java
 ```
@@ -279,14 +331,15 @@ src/main/java/com/core/attribute/tacz/
 | `AmmoItemDataAccessorMixin` | `isAmmoOfGun` | 让枪械接受并消耗新的弹药种类 |
 | `EntityKineticBulletMixin` | `EntityKineticBullet` 构造 | 注入子弹的伤害/穿甲/弹道覆盖值 |
 | `CameraSetupEventMixin` | `initialCameraRecoil` | 按物品倍率缩放客户端相机后座 |
-| `lr/LrMeleeItemMixin` · `LrMeleeItemLegacyMixin` | LR 近战物品 | 覆盖 LR 近战攻击冷却（兼容 0.3.x / 0.4.x 两套签名） |
+| `lr/LrMeleeItemMixin` · `lr/LrMeleeItemLegacyMixin` | LR 近战物品（`MeleeItem`） | 重缩放 LR 近战攻击冷却，让「攻击速度」生效（[详见](#兼容-lr-战术工坊可选)） |
 
 **几个刻意的工程决策：**
 
 - **按物品覆盖，而非改动全局数据**：TACZ 的 `GunData` 按枪械**类型**共享，无法按物品区分。因此弹道与弹药覆盖都落在「消费点」上（生成子弹时、匹配弹药时、渲染面板时），而不是去改共享的索引数据；
 - **未设置即不写入**：默认值与默认开关不落盘，保证未编辑的物品标签干净、可随时还原；
 - **客户端/服务端同时覆盖**：子弹在服务端构造后再同步，弹道字段会随 `writeSpawnData` 一起下发给附近客户端；
-- **可选依赖用独立 Mixin 配置**：LR 兼容放在 `tacz_attribute_data.lrtactical.mixins.json`，声明为 `required: false`，未安装 LR 时自动跳过。
+- **可选依赖用独立 Mixin 配置**：LR 兼容放在 `tacz_attribute_data.lrtactical.mixins.json`，声明为 `required: false`，未安装 LR 时自动跳过；两套签名（0.3.x / 0.4.x）各自独立声明，不匹配的一个只留一条启动警告；
+- **工具类必须放在 mixin 包之外**：Mixin 会「保留」配置里声明的整个包，直接加载其中的普通类会抛 `IllegalClassLoadError`。因此 LR 的共享冷却换算逻辑单独放在 `compat/LrTiming.java`，而不是混在 `mixin.lr` 包内。
 
 ---
 
@@ -295,6 +348,7 @@ src/main/java/com/core/attribute/tacz/
 - **后座仅客户端生效**：TACZ 的相机后座本身就是客户端表现，没有服务端后座数据；
 - **子弹速度是绝对覆盖**：填入的数值会取代 TACZ 原本由弹药/配件提供的速度加成；
 - **弹药箱（Ammo Box）**：其弹药匹配走独立逻辑，暂不跟随「主弹药」覆盖；
+- **LR 兼容绑定 LR 的方法签名**：LR 近战冷却依赖 `MeleeItem` 的两个计时方法（0.3.x / 0.4.x 各一套已内置）。若 LR 后续版本再次改动签名，需要同步更新本模组；
 - **客户端与服务端需使用同版本模组**，否则网络通道版本不匹配。
 
 ---
@@ -313,7 +367,10 @@ A：把数值清空、开关关掉再保存即可 —— 未设置的值不会�
 **Q：服务器里提示没有权限？**
 A：让管理员把你的权限等级调整到 2 及以上，或在单人世界中编辑。
 
-**Q：和别的 TACZ 修改类模组冲突？**
+**Q：装了 LR 战术工坊，近战武器加「攻击速度」却没变化？**
+A：先确认数值语义 —— 它是**倍率**，`1.0` 等于原样，要更快需填 `>1.0`（例如 `1.5`）。若确认大于 1 仍无效，检查启动日志里是否有本模组的 LR mixin 警告（说明签名不匹配），以及武器自身的计时值是否为 0（此时日志会输出一条 INFO 说明无从缩放）。
+
+**Q：和别的 TACZ / LR 修改类模组冲突？**
 A：若对方也 Mixin 了相同方法（如 `MeleeItem` 相关），可能互相覆盖，建议只保留一个。
 
 ---
@@ -327,7 +384,7 @@ A：若对方也 Mixin 了相同方法（如 `MeleeItem` 相关），可能互�
 - 新增「属性标签」显示/隐藏开关，自定义属性行默认隐藏；
 - 新增圆角输入框文字垂直居中修复；
 - 枪械提示面板可正确显示替换后的主弹药；
-- 构建：加入 LR 依赖与可选 Mixin 配置。
+- **LR 战术工坊兼容**：LR 近战武器的攻击速度可编辑（作为冷却倍率），内置 0.3.x / 0.4.x 两套签名，使用独立可选 Mixin 配置。
 
 ---
 
